@@ -1,5 +1,5 @@
 
-import { Component, ChangeDetectionStrategy, signal, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, inject, ElementRef, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { GeminiService, ApiResponse } from './services/gemini.service';
@@ -23,40 +23,108 @@ export class AppComponent {
   
   copiedState = signal<{[key: number]: boolean}>({});
 
+  isCameraOpen = signal(false);
+  videoElement = viewChild<ElementRef<HTMLVideoElement>>('videoElement');
+  private stream: MediaStream | null = null;
+
   onFileChange(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files[0]) {
-      const file = input.files[0];
-      
-      // Reset state for new upload
-      this.userInput.set('');
-      this.error.set(null);
-      this.responses.set(null);
-      this.copiedState.set({});
-
-      // Show preview immediately
-      const reader = new FileReader();
-      reader.onload = (e: any) => {
-        this.uploadedImage.set({ file, previewUrl: e.target.result });
-      };
-      reader.readAsDataURL(file);
-
-      // Start text extraction
-      this.isExtractingText.set(true);
-      this.geminiService.getTextFromImage(file)
-        .then(extractedText => {
-          this.userInput.set(extractedText);
-        })
-        .catch(e => {
-          this.error.set(e.message || 'Failed to extract text from image.');
-          this.uploadedImage.set({ file: null, previewUrl: null }); // Clear preview on error
-          const fileInput = document.getElementById('file-upload') as HTMLInputElement;
-          if (fileInput) fileInput.value = '';
-        })
-        .finally(() => {
-          this.isExtractingText.set(false);
-        });
+      this.processFile(input.files[0]);
     }
+  }
+
+  private processFile(file: File): void {
+    // Reset state for new input
+    this.userInput.set('');
+    this.error.set(null);
+    this.responses.set(null);
+    this.copiedState.set({});
+
+    // Show preview immediately
+    const reader = new FileReader();
+    reader.onload = (e: any) => {
+      this.uploadedImage.set({ file, previewUrl: e.target.result });
+    };
+    reader.readAsDataURL(file);
+
+    // Start text extraction
+    this.isExtractingText.set(true);
+    this.geminiService.getTextFromImage(file)
+      .then(extractedText => {
+        this.userInput.set(extractedText);
+      })
+      .catch(e => {
+        this.error.set(e.message || 'Failed to extract text from image.');
+        this.uploadedImage.set({ file: null, previewUrl: null }); // Clear preview on error
+        const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+      })
+      .finally(() => {
+        this.isExtractingText.set(false);
+      });
+  }
+
+  async openCamera(): Promise<void> {
+    this.clearInput();
+    
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera access is not supported by your browser.');
+      }
+      this.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      this.isCameraOpen.set(true);
+      // Let Angular render the video element, then set the srcObject
+      setTimeout(() => {
+        const video = this.videoElement()?.nativeElement;
+        if (video) {
+          video.srcObject = this.stream;
+        } else {
+          this.closeCamera();
+          this.error.set('Could not initialize camera view. Please try again.');
+        }
+      }, 0);
+    } catch (err: any) {
+      console.error('Error accessing camera:', err);
+      this.error.set(err.message || 'Could not access the camera. Please check permissions.');
+      this.isCameraOpen.set(false);
+    }
+  }
+
+  closeCamera(): void {
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => track.stop());
+    }
+    this.isCameraOpen.set(false);
+    this.stream = null;
+  }
+
+  captureImage(): void {
+    const video = this.videoElement()?.nativeElement;
+    if (!video || video.paused || video.ended || !video.videoWidth) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext('2d');
+    if (!context) {
+      this.error.set('Could not process image.');
+      this.closeCamera();
+      return;
+    }
+    
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const file = new File([blob], `capture-${Date.now()}.png`, { type: 'image/png' });
+        this.processFile(file);
+      } else {
+        this.error.set('Failed to capture image.');
+      }
+    }, 'image/png');
+
+    this.closeCamera();
   }
 
   async getHelp(): Promise<void> {

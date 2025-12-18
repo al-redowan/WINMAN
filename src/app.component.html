@@ -32,9 +32,14 @@
         <div class="text-center text-gray-500 text-sm">OR</div>
 
         <div>
-          <label for="file-upload" class="block text-sm font-medium text-gray-300 mb-2">
-            Upload a screenshot
-          </label>
+          <div class="flex justify-between items-center mb-2">
+            <label for="file-upload" class="block text-sm font-medium text-gray-300">
+              Upload a screenshot
+            </label>
+            <button type="button" (click)="openCamera()" class="text-sm font-semibold text-teal-400 hover:text-teal-300 focus:outline-none disabled:opacity-50" [disabled]="isLoading() || isExtractingText()">
+              or Use Camera
+            </button>
+          </div>
           <div class="mt-2 flex justify-center rounded-lg border border-dashed border-gray-600 px-6 py-10">
             <div class="text-center">
               <svg class="mx-auto h-12 w-12 text-gray-500" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
@@ -144,6 +149,29 @@
         </div>
       </div>
     }
-
   </div>
+
+  <!-- Camera Modal -->
+  @if (isCameraOpen()) {
+    <div class="fixed inset-0 bg-gray-900 bg-opacity-80 flex flex-col items-center justify-center z-50 p-4 backdrop-blur-sm">
+      <div class="relative bg-gray-800 rounded-2xl w-full max-w-lg shadow-2xl border border-gray-700">
+        <video #videoElement class="rounded-t-lg w-full h-auto" autoplay playsinline muted></video>
+        <div class="p-4 flex justify-center items-center gap-4 bg-gray-800/50 rounded-b-lg border-t border-gray-700 relative h-28">
+          <button (click)="captureImage()" class="w-16 h-16 rounded-full bg-teal-600 border-4 border-teal-400 text-sm font-semibold text-white shadow-lg hover:bg-teal-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-teal-500 transition-all transform hover:scale-110" aria-label="Capture image">
+            <svg class="w-8 h-8 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.776 48.776 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+            </svg>
+          </button>
+          <button (click)="closeCamera()" class="absolute top-3 right-3 rounded-full bg-gray-900/50 p-2 text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-white" aria-label="Close camera">
+            <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <p class="text-gray-400 mt-4 text-sm">Point your camera at the chat screen and capture.</p>
+    </div>
+  }
+
 </main>
