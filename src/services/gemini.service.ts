@@ -1,4 +1,3 @@
-
 import { Injectable } from '@angular/core';
 import { GoogleGenAI, GenerateContentResponse, Type } from '@google/genai';
 
@@ -38,6 +37,55 @@ export class GeminiService {
     };
   }
 
+  /**
+   * Analyzes text for inappropriate content using a separate Gemini call.
+   * Throws an error if the content is flagged as inappropriate.
+   */
+  private async checkForInappropriateContent(text: string): Promise<void> {
+    if (!text || text.trim() === '') {
+      return; // No need to check empty strings
+    }
+
+    const model = 'gemini-2.5-flash';
+    const safetyPrompt = `You are a content safety moderator. Analyze the following text to determine if it contains any explicit, harassing, hateful, threatening, or otherwise inappropriate content that violates community guidelines. Respond with only a JSON object. The object must have a key "inappropriate" (boolean) and, if true, a "reason" (string).
+
+Text to analyze: "${text}"`;
+
+    try {
+      const response = await this.ai.models.generateContent({
+        model,
+        contents: { parts: [{ text: safetyPrompt }] },
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              inappropriate: { type: Type.BOOLEAN },
+              reason: { type: Type.STRING },
+            },
+            required: ['inappropriate'],
+          },
+        },
+      });
+
+      const jsonText = response.text.trim();
+      const safetyResult = JSON.parse(jsonText);
+
+      if (safetyResult.inappropriate) {
+        console.warn(`Content flagged as inappropriate. Reason: ${safetyResult.reason}`);
+        throw new Error('This content was flagged as inappropriate and cannot be processed. Please adhere to community guidelines.');
+      }
+    } catch (error: any) {
+      // If the error is the one we threw, re-throw it.
+      if (error.message.includes('inappropriate')) {
+          throw error;
+      }
+      console.error('Error during safety check:', error);
+      // Let it pass if the safety check itself fails, to not block users due to transient API issues.
+    }
+  }
+
+
   async getTextFromImage(image: File): Promise<string> {
     const model = 'gemini-2.5-flash';
     const imagePart = await this.fileToGenerativePart(image);
@@ -48,14 +96,25 @@ export class GeminiService {
         model,
         contents: { parts: [imagePart, { text: prompt }] },
       });
-      return response.text.trim();
+      const extractedText = response.text.trim();
+
+      // Safety Check
+      await this.checkForInappropriateContent(extractedText);
+      
+      return extractedText;
     } catch (error) {
-      console.error('Error extracting text from image:', error);
-      throw new Error('Could not read the text from the screenshot. Please try again or type it manually.');
+      console.error('Error processing image:', error);
+      if (error instanceof Error && error.message.includes('inappropriate')) {
+        throw error; // Re-throw the specific safety error
+      }
+      throw new Error('Could not process the screenshot. It may be unreadable or contain inappropriate content.');
     }
   }
 
   async generateReplies(userInput: string, image?: File | null): Promise<ApiResponse> {
+    // Safety Check on user's direct text input
+    await this.checkForInappropriateContent(userInput);
+
     const model = 'gemini-2.5-flash';
 
     const systemPrompt = `You are "Desi Wingman," an expert dating coach for the modern Bangladeshi dating scene. You are witty, culturally aware, and act as a supportive friend. Your goal is to help the user with replies for Tinder, Bumble, etc.
@@ -139,6 +198,10 @@ The user has provided the following context. Analyze it and generate the 3 reply
 
     } catch (error) {
       console.error('Error calling Gemini API:', error);
+      // Check if it's our custom safety error
+      if (error instanceof Error && error.message.includes('inappropriate')) {
+          throw error;
+      }
       throw new Error('Failed to get advice from Wingman. The model might be busy, please try again.');
     }
   }
