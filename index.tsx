@@ -1,5 +1,5 @@
 
-import '@angular/compiler'; // JIT compilation
+ // JIT compilation
 
 import { bootstrapApplication } from '@angular/platform-browser';
 import { AppComponent } from './src/app.component';
