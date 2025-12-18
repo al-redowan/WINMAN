@@ -1,0 +1,7 @@
+{
+  "name": "Desi Wingman",
+  "description": "Your AI dating coach for the modern Bangladeshi dating scene. Get witty, charming, and cool replies for your chats on Tinder, Bumble, or Instagram.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

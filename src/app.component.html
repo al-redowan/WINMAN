@@ -1,0 +1,149 @@
+
+<main class="min-h-screen bg-gray-900 text-gray-100 p-4 sm:p-6 md:p-8 flex flex-col items-center">
+  <div class="w-full max-w-2xl mx-auto">
+    
+    <!-- Header -->
+    <header class="text-center mb-8">
+      <h1 class="text-4xl sm:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-blue-500">
+        Desi Wingman
+      </h1>
+      <p class="text-gray-400 mt-2">Your AI dating coach for the modern BD scene.</p>
+    </header>
+
+    <!-- Input Section -->
+    <div class="bg-gray-800 rounded-2xl p-6 shadow-2xl border border-gray-700">
+      <div class="flex flex-col gap-4">
+        <div>
+          <label for="message" class="block text-sm font-medium text-gray-300 mb-2">
+            What did she say?
+          </label>
+          <textarea
+            id="message"
+            name="message"
+            rows="3"
+            [ngModel]="userInput()" 
+            (ngModelChange)="userInput.set($event)"
+            class="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-gray-200 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors placeholder-gray-500 disabled:opacity-70"
+            [placeholder]="isExtractingText() ? 'Reading screenshot...' : 'Type or paste her message here...'"
+            [disabled]="isExtractingText()"
+          ></textarea>
+        </div>
+
+        <div class="text-center text-gray-500 text-sm">OR</div>
+
+        <div>
+          <label for="file-upload" class="block text-sm font-medium text-gray-300 mb-2">
+            Upload a screenshot
+          </label>
+          <div class="mt-2 flex justify-center rounded-lg border border-dashed border-gray-600 px-6 py-10">
+            <div class="text-center">
+              <svg class="mx-auto h-12 w-12 text-gray-500" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+              <div class="mt-4 flex text-sm leading-6 text-gray-400">
+                <label for="file-upload" class="relative cursor-pointer rounded-md bg-gray-800 font-semibold text-teal-400 focus-within:outline-none focus-within:ring-2 focus-within:ring-teal-500 focus-within:ring-offset-2 focus-within:ring-offset-gray-900 hover:text-teal-300">
+                  <span>Upload a file</span>
+                  <input id="file-upload" name="file-upload" type="file" class="sr-only" (change)="onFileChange($event)" accept="image/*">
+                </label>
+                <p class="pl-1">or drag and drop</p>
+              </div>
+              <p class="text-xs leading-5 text-gray-500">PNG, JPG, GIF up to 10MB</p>
+            </div>
+          </div>
+        </div>
+
+        @if (uploadedImage().previewUrl) {
+          <div class="mt-4">
+            <p class="text-sm font-medium text-gray-300 mb-2">Screenshot Preview:</p>
+            <div class="relative">
+              <img [src]="uploadedImage().previewUrl" alt="Screenshot preview" class="rounded-lg w-full max-w-sm mx-auto" [class.opacity-50]="isExtractingText()">
+              @if (isExtractingText()) {
+                <div class="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75 rounded-lg">
+                  <div class="flex items-center gap-2 text-white">
+                    <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Reading...</span>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <div class="flex items-center justify-between mt-4">
+            <button
+                type="button"
+                (click)="clearInput()"
+                class="rounded-md bg-gray-700 px-4 py-2 text-sm font-semibold text-gray-300 shadow-sm hover:bg-gray-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500 transition-colors"
+                [disabled]="isLoading() || isExtractingText()"
+            >
+                Clear
+            </button>
+            <button
+                type="button"
+                (click)="getHelp()"
+                class="rounded-md bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                [disabled]="isLoading() || isExtractingText()"
+            >
+                @if (isLoading()) {
+                    <div class="flex items-center gap-2">
+                        <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Thinking...
+                    </div>
+                } @else {
+                    <span>Get Advice</span>
+                }
+            </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error Display -->
+    @if (error()) {
+      <div class="mt-6 bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg relative" role="alert">
+        <strong class="font-bold">Oops! </strong>
+        <span class="block sm:inline">{{ error() }}</span>
+      </div>
+    }
+
+    <!-- Response Section -->
+    @if (responses() && !isLoading()) {
+      <div class="mt-8">
+        <h2 class="text-2xl font-semibold text-center mb-6 text-gray-200">Here's your game plan, bro:</h2>
+        <div class="space-y-4">
+          @for (option of responses()!.options; track option.title; let i = $index) {
+            <div class="bg-gray-800 rounded-lg p-5 border border-gray-700 shadow-lg transform hover:scale-105 hover:border-teal-500 transition-all duration-300">
+              <div class="flex justify-between items-start">
+                  <div>
+                      <h3 class="text-lg font-semibold text-teal-400">{{ option.title }}</h3>
+                      <p class="mt-2 text-gray-300 whitespace-pre-wrap">{{ option.reply }}</p>
+                  </div>
+                  <button (click)="copyToClipboard(option.reply, i)"
+                          class="ml-4 flex-shrink-0 relative rounded-full bg-gray-700 p-2 text-gray-400 hover:text-white hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-800 transition-colors"
+                          [title]="copiedState()[i] ? 'Copied!' : 'Copy reply'">
+                      @if (copiedState()[i]) {
+                          <!-- Checkmark Icon -->
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                          </svg>
+                      } @else {
+                          <!-- Copy Icon -->
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                      }
+                  </button>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+  </div>
+</main>
